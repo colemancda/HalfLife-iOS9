@@ -1,0 +1,80 @@
+diff --git a/3rdparty/libbacktrace/wscript b/3rdparty/libbacktrace/wscript
+index b6868df..9bb57e7 100644
+--- a/3rdparty/libbacktrace/wscript
++++ b/3rdparty/libbacktrace/wscript
+@@ -57,6 +57,10 @@
+ char buf[100];
+ int main(int argc, char **argv) { return readlink(argv[0], buf, sizeof(buf)); }'''
+ 
++FRAGMENT_UNWIND_BACKTRACE='''#include <unwind.h>
++static _Unwind_Reason_Code cb(struct _Unwind_Context *ctx, void *data) { return _URC_NO_REASON; }
++int main(void) { return _Unwind_Backtrace(cb, 0); }'''
++
+ def options(opt):
+ 	pass
+ 
+@@ -71,6 +75,11 @@ def configure(conf):
+ 		conf.env.DISABLE_LIBBACKTRACE = True
+ 		return
+ 
++	# e.g. armv7 iOS, which only has the SjLj unwinder
++	if not conf.check_cc(fragment=FRAGMENT_UNWIND_BACKTRACE, msg='Checking for _Unwind_Backtrace', mandatory=False):
++		conf.env.DISABLE_LIBBACKTRACE = True
++		return
++
+ 	if not conf.path.find_dir('libbacktrace') or not conf.path.find_dir('libbacktrace/config'):
+ 		conf.fatal('Can\'t find libbacktrace submodule. Run `git submodule update --init --recursive`.')
+ 		return
+diff --git a/engine/platform/ios/window_insets.m b/engine/platform/ios/window_insets.m
+index a896d9b..e47f553 100644
+--- a/engine/platform/ios/window_insets.m
++++ b/engine/platform/ios/window_insets.m
+@@ -38,6 +38,7 @@ void IOS_GetWindowInsets( void *window, float insets[4] )
+ 	if( !nativeWindow )
+ 		return;
+ 
++#if __IPHONE_OS_VERSION_MAX_ALLOWED >= 110000 // safeAreaInsets isn't in older SDKs
+ 	if( @available( iOS 11.0, * ))
+ 	{
+ 		// UIKit reports points while the renderer may use Retina pixels, so return fractions
+@@ -51,5 +52,6 @@ void IOS_GetWindowInsets( void *window, float insets[4] )
+ 		insets[2] = safe.right / size.width;
+ 		insets[3] = safe.bottom / size.height;
+ 	}
++#endif
+ }
+ #endif // XASH_SDL == 2
+diff --git a/scripts/waifulib/xcompile.py b/scripts/waifulib/xcompile.py
+index 8a7c8f1..7dba844 100644
+--- a/scripts/waifulib/xcompile.py
++++ b/scripts/waifulib/xcompile.py
+@@ -55,18 +55,25 @@ class iOS:
+ 	def __init__(self, ctx, issim):
+ 		self.ctx = ctx
+ 		sdk = 'iphonesimulator' if issim else 'iphoneos'
+-		self.sdkpath = ctx.cmd_and_log('xcrun --show-sdk-path --sdk %s' % sdk).strip()
+-		self.target = '--target=aarch64-apple-ios'
++		# IOS_SDK, IOS_ARCH and IOS_MIN_VERSION allow building for older devices,
++		# e.g. armv7 with an iOS 9 SDK
++		self.sdkpath = ctx.environ.get('IOS_SDK') or ctx.cmd_and_log('xcrun --show-sdk-path --sdk %s' % sdk).strip()
++		self.arch = ctx.environ.get('IOS_ARCH', 'aarch64')
++		self.minver = ctx.environ.get('IOS_MIN_VERSION', '12.0')
++		self.target = '--target=%s-apple-ios' % self.arch
+ 		if issim: self.target += '-simulator'
+ 	
+ 	def cflags(self, cxx = False):
+ 	
+-		cflags = [ '-isysroot' + self.sdkpath, self.target, '-mios-version-min=12.0' ]
++		cflags = [ '-isysroot' + self.sdkpath, self.target, '-mios-version-min=' + self.minver ]
++		# Xcode's linker writes an even LC_MAIN entry offset for Thumb code
++		if self.arch.startswith('armv7'):
++			cflags += [ '-marm' ]
+ 		return cflags
+ 		
+ 	def linkflags(self):
+ 		
+-		linkflags = [ '-isysroot' + self.sdkpath, self.target, '-mios-version-min=12.0' ]
++		linkflags = [ '-isysroot' + self.sdkpath, self.target, '-mios-version-min=' + self.minver ]
+ 		return linkflags
+ 	
+ 	def cc(self):
