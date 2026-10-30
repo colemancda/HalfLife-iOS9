@@ -26,6 +26,11 @@ cp -R build/SDL2.framework "$APP/"
 plutil -convert binary1 -o "$APP/Info.plist" bundle/Info.plist
 printf 'APPL????' > "$APP/PkgInfo"
 
+# Home screen icons, made from your own Steam install (not in the repo)
+if [ -d bundle/icons ]; then
+  cp bundle/icons/*.png "$APP/"
+fi
+
 # Ad-hoc sign every Mach-O; iOS 9 kills unsigned code even when jailbroken.
 find "$APP" -type f \( -name '*.dylib' -o -name xash -o -path '*/SDL2.framework/SDL2' \) -print0 |
   xargs -0 -n1 ldid -S
