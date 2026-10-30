@@ -14,3 +14,6 @@ logs/
 # macOS metadata
 .DS_Store
 ._*
+
+# App icons made from your own Steam install (Valve artwork)
+bundle/icons/
