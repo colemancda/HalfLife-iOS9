@@ -1,0 +1,123 @@
+--- a/SDL2-2.32.10/src/audio/coreaudio/SDL_coreaudio.m	2025-08-12 12:55:27
++++ b/SDL2-2.32.10/src/audio/coreaudio/SDL_coreaudio.m	2026-10-30 12:24:56
+@@ -417,15 +417,18 @@
+              */
+             options |= 0x4; /* AVAudioSessionCategoryOptionAllowBluetooth; */
+         }
++#if !defined(__IPHONE_OS_VERSION_MAX_ALLOWED) || __IPHONE_OS_VERSION_MAX_ALLOWED >= 100000 /* not in the iOS 9 SDK */
+         if (category == AVAudioSessionCategoryPlayAndRecord) {
+             options |= AVAudioSessionCategoryOptionAllowBluetoothA2DP |
+                        AVAudioSessionCategoryOptionAllowAirPlay;
+         }
++#endif
+         if (category == AVAudioSessionCategoryPlayback ||
+             category == AVAudioSessionCategoryPlayAndRecord) {
+             options |= AVAudioSessionCategoryOptionDuckOthers;
+         }
+ 
++#if !defined(__IPHONE_OS_VERSION_MAX_ALLOWED) || __IPHONE_OS_VERSION_MAX_ALLOWED >= 100000
+         if ([session respondsToSelector:@selector(setCategory:mode:options:error:)]) {
+             if (![session.category isEqualToString:category] || session.categoryOptions != options) {
+                 /* Stop the current session so we don't interrupt other application audio */
+@@ -439,7 +442,9 @@
+                     return NO;
+                 }
+             }
+-        } else {
++        } else
++#endif
++        {
+             if (![session.category isEqualToString:category]) {
+                 /* Stop the current session so we don't interrupt other application audio */
+                 pause_audio_devices();
+--- a/SDL2-2.32.10/src/joystick/iphoneos/SDL_mfijoystick.m	2025-01-01 10:47:53
++++ b/SDL2-2.32.10/src/joystick/iphoneos/SDL_mfijoystick.m	2026-10-30 12:24:43
+@@ -98,6 +98,18 @@
+ @property(nonatomic, readonly, nullable) GCControllerButtonInput *buttonHome;
+ #endif
+ @end
++#if TARGET_OS_IOS && __IPHONE_OS_VERSION_MAX_ALLOWED < 100000
++/* Declarations from the iOS 10 SDK, for building with the iOS 9 SDK */
++@interface GCMicroGamepad : NSObject
++@property(nonatomic, readonly) GCControllerDirectionPad *dpad;
++@property(nonatomic, readonly) GCControllerButtonInput *buttonA;
++@property(nonatomic, readonly) GCControllerButtonInput *buttonX;
++@property(nonatomic) BOOL allowsRotation;
++@end
++@interface GCController (SDL_iOS9)
++@property(nonatomic, readonly) GCMicroGamepad *microGamepad;
++@end
++#endif
+ @interface GCMicroGamepad (SDL)
+ #if !((__IPHONE_OS_VERSION_MAX_ALLOWED >= 130000) || (__APPLETV_OS_VERSION_MAX_ALLOWED >= 130000) || (__MAC_OS_VERSION_MAX_ALLOWED >= 1500000))
+ @property(nonatomic, readonly) GCControllerButtonInput *buttonMenu;
+--- a/SDL2-2.32.10/src/misc/ios/SDL_sysurl.m	2025-01-01 10:47:53
++++ b/SDL2-2.32.10/src/misc/ios/SDL_sysurl.m	2026-10-30 12:24:56
+@@ -31,9 +31,12 @@
+         if (![[UIApplication sharedApplication] canOpenURL:nsurl]) {
+             return SDL_SetError("No handler registered for this type of URL");
+         }
++#if !defined(__IPHONE_OS_VERSION_MAX_ALLOWED) || __IPHONE_OS_VERSION_MAX_ALLOWED >= 100000 /* not in the iOS 9 SDK */
+         if (@available(iOS 10.0, tvOS 10.0, *)) {
+             [[UIApplication sharedApplication] openURL:nsurl options:@{} completionHandler:^(BOOL success) {}];
+-        } else {
++        } else
++#endif
++        {
+             #ifndef SDL_PLATFORM_VISIONOS   /* Fallback is never available in any version of VisionOS (but correct API always is). */
+             [[UIApplication sharedApplication] openURL:nsurl];
+             #endif
+--- a/SDL2-2.32.10/src/video/uikit/SDL_uikitappdelegate.m	2025-01-01 10:47:53
++++ b/SDL2-2.32.10/src/video/uikit/SDL_uikitappdelegate.m	2026-10-30 12:24:56
+@@ -34,7 +34,9 @@
+ #include "../../events/SDL_events_c.h"
+ 
+ #if !TARGET_OS_TV
++#if __has_include(<AvailabilityVersions.h>) /* not in the iOS 9 SDK */
+ #include <AvailabilityVersions.h>
++#endif
+ 
+ # ifndef __IPHONE_13_0
+ # define __IPHONE_13_0 130000
+@@ -507,6 +509,10 @@
+ }
+ 
+ #if TARGET_OS_TV || (defined(__IPHONE_9_0) && __IPHONE_OS_VERSION_MIN_REQUIRED >= __IPHONE_9_0)
++
++#if TARGET_OS_IOS && __IPHONE_OS_VERSION_MAX_ALLOWED < 100000
++typedef NSString *UIApplicationOpenURLOptionsKey; /* iOS 10 SDK */
++#endif
+ 
+ - (BOOL)application:(UIApplication *)app openURL:(NSURL *)url options:(NSDictionary<UIApplicationOpenURLOptionsKey,id> *)options
+ {
+--- a/SDL2-2.32.10/src/video/uikit/SDL_uikitviewcontroller.m	2025-01-01 10:47:53
++++ b/SDL2-2.32.10/src/video/uikit/SDL_uikitviewcontroller.m	2026-10-30 12:24:56
+@@ -55,10 +55,12 @@
+         viewcontroller.homeIndicatorHidden = (hint && *hint) ? SDL_atoi(hint) : -1;
+ #pragma clang diagnostic push
+ #pragma clang diagnostic ignored "-Wunguarded-availability-new"
++#if !defined(__IPHONE_OS_VERSION_MAX_ALLOWED) || __IPHONE_OS_VERSION_MAX_ALLOWED >= 110000 /* not in the iOS 9 SDK */
+         if ([viewcontroller respondsToSelector:@selector(setNeedsUpdateOfHomeIndicatorAutoHidden)]) {
+             [viewcontroller setNeedsUpdateOfHomeIndicatorAutoHidden];
+             [viewcontroller setNeedsUpdateOfScreenEdgesDeferringSystemGestures];
+         }
++#endif
+ #pragma clang diagnostic pop
+     }
+ }
+@@ -123,6 +125,7 @@
+          * To enable this on phones, you should add the following line to Info.plist:
+          * <key>CADisableMinimumFrameDurationOnPhone</key> <true/>
+          */
++#if !defined(__IPHONE_OS_VERSION_MAX_ALLOWED) || __IPHONE_OS_VERSION_MAX_ALLOWED >= 150000 /* not in the iOS 9 SDK */
+         if (@available(iOS 15.0, tvOS 15.0, *)) {
+             SDL_DisplayMode mode;
+             if (SDL_GetDesktopDisplayMode(0, &mode) == 0 && mode.refresh_rate > 60.0f) {
+@@ -132,6 +135,7 @@
+                 [displayLink addToRunLoop:NSRunLoop.currentRunLoop forMode:NSDefaultRunLoopMode];
+             }
+         }
++#endif
+     }
+     return self;
+ }
