@@ -8,6 +8,18 @@
 	<string>Xash3D</string>
 	<key>CFBundleExecutable</key>
 	<string>xash</string>
+	<key>CFBundleIcons</key>
+	<dict>
+		<key>CFBundlePrimaryIcon</key>
+		<dict>
+			<key>CFBundleIconFiles</key>
+			<array>
+				<string>Icon-60</string>
+				<string>Icon-40</string>
+				<string>Icon-29</string>
+			</array>
+		</dict>
+	</dict>
 	<key>CFBundleIdentifier</key>
 	<string>su.xash.engine</string>
 	<key>CFBundleInfoDictionaryVersion</key>
