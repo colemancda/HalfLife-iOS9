@@ -1,0 +1,26 @@
+diff --git a/tf-psa-crypto/platform/platform_util.c b/tf-psa-crypto/platform/platform_util.c
+index 3dd58f3..9643168 100644
+--- a/tf-psa-crypto/platform/platform_util.c
++++ b/tf-psa-crypto/platform/platform_util.c
+@@ -203,7 +203,20 @@ void (*mbedtls_test_hook_test_fail)(const char *, int, const char *);
+ #include <unistd.h>
+ #endif
+ 
+-#if (defined(_POSIX_VERSION) && _POSIX_VERSION >= 199309L) || defined(__HAIKU__)
++#if defined(__APPLE__) && !defined(CLOCK_MONOTONIC)
++/* iOS 9 and older have no clock_gettime */
++#include <sys/time.h>
++mbedtls_ms_time_t mbedtls_ms_time(void)
++{
++    struct timeval tv;
++
++    if (gettimeofday(&tv, NULL)) {
++        return time(NULL) * 1000;
++    }
++
++    return (mbedtls_ms_time_t) tv.tv_sec * 1000 + tv.tv_usec / 1000;
++}
++#elif (defined(_POSIX_VERSION) && _POSIX_VERSION >= 199309L) || defined(__HAIKU__)
+ mbedtls_ms_time_t mbedtls_ms_time(void)
+ {
+     int ret;
