@@ -1,0 +1,16 @@
+# Build output
+build/
+src/
+
+# iOS 9.3 SDK (Apple's; re-create with ./make-sdk.sh) and downloaded archives
+sdk/
+downloads/
+
+# Logs and device crash reports
+logs/
+*.log
+*.ips
+
+# macOS metadata
+.DS_Store
+._*
