@@ -55,6 +55,13 @@ Then copy Half-Life's `valve` folder from your Steam install to
 Launch it from the home screen, or over SSH with `uiopen xash3d://`. The
 engine log is `/var/mobile/Documents/engine.log`.
 
+## App icon
+
+The icon isn't included (it's Valve's artwork). To add one, put
+`Icon-60@2x.png` (120×120), `Icon-40@2x.png` (80×80) and `Icon-29@2x.png`
+(58×58) in `bundle/icons/`, for example scaled down from the 128×128 image in
+your Steam install's `valve/game.icns`. `package.sh` copies them into the app.
+
 ## Patches
 
 | Patch | Why |
